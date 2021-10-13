@@ -60,6 +60,11 @@ ATGMProjectile::ATGMProjectile()
 	}
 
 	InitialLifeSpan = 3.0f;
+
+	// Set the projectile's collision profile
+	CollisionComponent->BodyInstance.SetCollisionProfileName(TEXT("Projectile"));
+
+	CollisionComponent->OnComponentHit.AddDynamic(this, &ATGMProjectile::OnHit);
 }
 
 // Called when the game starts or when spawned
@@ -80,3 +85,12 @@ void ATGMProjectile::FireInDirection(const FVector& ShootDirection)
 	ProjectileMovementComponent->Velocity = ShootDirection * ProjectileMovementComponent->InitialSpeed;
 }
 
+void ATGMProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (OtherActor != this && OtherComponent->IsSimulatingPhysics())
+	{
+		OtherComponent->AddImpulseAtLocation(ProjectileMovementComponent->Velocity * 100.0f, Hit.ImpactPoint);
+	}
+
+	Destroy();
+}
