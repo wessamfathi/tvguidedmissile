@@ -58,13 +58,14 @@ ATGMProjectile::ATGMProjectile()
 		ProjectileMeshComponent->SetRelativeScale3D(FVector(0.3f, 0.3f, 0.3f));
 		ProjectileMeshComponent->SetupAttachment(RootComponent);
 	}
+
+	InitialLifeSpan = 3.0f;
 }
 
 // Called when the game starts or when spawned
 void ATGMProjectile::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
