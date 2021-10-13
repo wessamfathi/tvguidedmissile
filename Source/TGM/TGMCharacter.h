@@ -67,6 +67,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 	TSubclassOf<class ATGMProjectile> ProjectileClass;
 
+	UPROPERTY()
+	ATGMProjectile* ActiveProjectile;
+
 protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -77,6 +80,8 @@ public:
 	FORCEINLINE class USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	void OnProjectileDestroyed(AActor* DestroyedActor);
 
 	// Function that handles firing projectiles.
 	UFUNCTION()

@@ -14,6 +14,8 @@
 
 ATGMCharacter::ATGMCharacter()
 {
+	ActiveProjectile = nullptr;
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -33,14 +35,14 @@ ATGMCharacter::ATGMCharacter()
 	GetCharacterMovement()->AirControl = 0.2f;
 
 	// Create a camera boom (pulls in towards the player if there is a collision)
-	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
-	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
-	CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
+	//CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	//CameraBoom->SetupAttachment(RootComponent);
+	//CameraBoom->TargetArmLength = 300.0f; // The camera follows at this distance behind the character	
+	//CameraBoom->bUsePawnControlRotation = true; // Rotate the arm based on the controller
 
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
+	FollowCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
@@ -172,12 +174,16 @@ void ATGMCharacter::FireProjectile()
 			SpawnParams.Instigator = GetInstigator();
 
 			// Spawn the projectile at the muzzle.
-			ATGMProjectile* Projectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-			if (Projectile)
+			ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+			if (ActiveProjectile)
 			{
+				ActiveProjectile->OnDestroyed.AddDynamic(this, &ATGMCharacter::OnProjectileDestroyed);
+
 				// Set the projectile's initial trajectory.
 				FVector LaunchDirection = MuzzleRotation.Vector();
-				Projectile->FireInDirection(LaunchDirection);
+				ActiveProjectile->FireInDirection(LaunchDirection);
+
+				FollowCamera->AttachToComponent(ActiveProjectile->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
 			}
 		}
 	}
@@ -185,5 +191,13 @@ void ATGMCharacter::FireProjectile()
 
 void ATGMCharacter::ExplodeProjectile()
 {
+	if (ActiveProjectile != nullptr)
+	{
+		ActiveProjectile->Destroy();
+	}
+}
 
+void ATGMCharacter::OnProjectileDestroyed(AActor* DestroyedActor)
+{
+	FollowCamera->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 }
