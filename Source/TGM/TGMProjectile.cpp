@@ -36,6 +36,28 @@ ATGMProjectile::ATGMProjectile()
 		ProjectileMovementComponent->Bounciness = 0.3f;
 		ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
 	}
+
+	if (ProjectileMeshComponent == nullptr)
+	{
+		ProjectileMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMeshComponent"));
+		static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(TEXT("StaticMesh'/Engine/BasicShapes/Sphere.Sphere'"));
+
+		if (Mesh.Succeeded())
+		{
+			ProjectileMeshComponent->SetStaticMesh(Mesh.Object);
+		}
+
+		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Engine/EngineMaterials/NewBaseFlattenMaterial.NewBaseFlattenMaterial'"));
+
+		if (Material.Succeeded())
+		{
+			ProjectileMaterialInstance = UMaterialInstanceDynamic::Create(Material.Object, ProjectileMeshComponent);
+		}
+
+		ProjectileMeshComponent->SetMaterial(0, ProjectileMaterialInstance);
+		ProjectileMeshComponent->SetRelativeScale3D(FVector(0.3f, 0.3f, 0.3f));
+		ProjectileMeshComponent->SetupAttachment(RootComponent);
+	}
 }
 
 // Called when the game starts or when spawned
