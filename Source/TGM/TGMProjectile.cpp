@@ -75,7 +75,7 @@ ATGMProjectile::ATGMProjectile()
 	ProjectileCamera->PostProcessSettings.GrainJitter = 1.0f;
 	ProjectileCamera->SetActive(false);
 
-	InitialLifeSpan = 3.0f;
+	InitialLifeSpan = 5.0f;
 
 	// Set the projectile's collision profile
 	CollisionComponent->BodyInstance.SetCollisionProfileName(TEXT("Projectile"));
