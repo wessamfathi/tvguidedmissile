@@ -81,14 +81,11 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+	UFUNCTION()
 	void OnProjectileDestroyed(AActor* DestroyedActor);
 
 	// Function that handles firing projectiles.
 	UFUNCTION()
 	void FireProjectile();
-
-	// Function that handles firing projectiles.
-	UFUNCTION()
-	void ExplodeProjectile();
 };
 

@@ -24,9 +24,9 @@ ATGMCharacter::ATGMCharacter()
 	BaseLookUpRate = 45.f;
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
+	bUseControllerRotationPitch = true;
+	bUseControllerRotationYaw = true;
+	bUseControllerRotationRoll = true;
 
 	// Configure character movement
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
@@ -43,7 +43,7 @@ ATGMCharacter::ATGMCharacter()
 	// Create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
+	FollowCamera->bUsePawnControlRotation = true; // Camera does not rotate relative to arm
 
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
@@ -80,7 +80,6 @@ void ATGMCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ATGMCharacter::OnResetVR);
 
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ATGMCharacter::FireProjectile);
-	PlayerInputComponent->BindAction("Explode", IE_Pressed, this, &ATGMCharacter::ExplodeProjectile);
 }
 
 
@@ -181,23 +180,13 @@ void ATGMCharacter::FireProjectile()
 
 				// Set the projectile's initial trajectory.
 				FVector LaunchDirection = MuzzleRotation.Vector();
-				ActiveProjectile->FireInDirection(LaunchDirection);
-
-				FollowCamera->AttachToComponent(ActiveProjectile->GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+				ActiveProjectile->FireInDirection(LaunchDirection, this);
+				Controller->Possess(ActiveProjectile);
 			}
 		}
 	}
 }
 
-void ATGMCharacter::ExplodeProjectile()
-{
-	if (ActiveProjectile != nullptr)
-	{
-		ActiveProjectile->Destroy();
-	}
-}
-
 void ATGMCharacter::OnProjectileDestroyed(AActor* DestroyedActor)
 {
-	FollowCamera->AttachToComponent(RootComponent, FAttachmentTransformRules::SnapToTargetIncludingScale);
 }
