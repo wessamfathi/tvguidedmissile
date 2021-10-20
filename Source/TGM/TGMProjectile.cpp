@@ -3,6 +3,8 @@
 
 #include "TGMProjectile.h"
 #include "Camera/CameraComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 ATGMProjectile::ATGMProjectile()
@@ -38,28 +40,13 @@ ATGMProjectile::ATGMProjectile()
 		ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
 	}
 
-	if (ProjectileMeshComponent == nullptr)
+	ProjectileMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMeshComponent"));
+
+	if (ProjectileMeshComponent != nullptr)
 	{
-		ProjectileMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMeshComponent"));
-		static ConstructorHelpers::FObjectFinder<UStaticMesh> Mesh(TEXT("StaticMesh'/Engine/BasicShapes/Sphere.Sphere'"));
-
-		if (Mesh.Succeeded())
-		{
-			ProjectileMeshComponent->SetStaticMesh(Mesh.Object);
-		}
-
-		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Engine/EngineMaterials/NewBaseFlattenMaterial.NewBaseFlattenMaterial'"));
-
-		if (Material.Succeeded())
-		{
-			ProjectileMaterialInstance = UMaterialInstanceDynamic::Create(Material.Object, ProjectileMeshComponent);
-		}
-
-		ProjectileMeshComponent->SetMaterial(0, ProjectileMaterialInstance);
-		ProjectileMeshComponent->SetRelativeScale3D(FVector(0.3f, 0.3f, 0.3f));
-		ProjectileMeshComponent->SetupAttachment(RootComponent);
+		ProjectileMeshComponent->SetStaticMesh(ProjectileMesh);
+		ProjectileMeshComponent->SetMaterial(0, ProjectileMaterial);
 	}
-
 
 	// Create a follow camera
 	ProjectileCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -138,8 +125,6 @@ void ATGMProjectile::AddControllerYawInput(float Val)
 {
 	Val = Val * TurnRateMultiplier;
 
-	UE_LOG(LogTemp, Warning, TEXT("%f"), Val);
-
 	ProjectileMovementComponent->Velocity = ProjectileMovementComponent->Velocity.RotateAngleAxis(Val, FVector(0.0f, 0.0f, 1.0f));
 	Super::AddControllerYawInput(Val);
 }
@@ -172,12 +157,20 @@ void ATGMProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor
 		OtherComponent->AddImpulseAtLocation(ProjectileMovementComponent->Velocity * 100.0f, Hit.ImpactPoint);
 	}
 
-	Destroy();
+	Explode();
 }
 
 void ATGMProjectile::Explode()
 {
-	Destroy();
+	UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionFX, GetActorLocation(), GetActorRotation(), true);
+	PSC->ActivateSystem();
+
+	ProjectileCamera->SetActive(false);
+
+	if (Controller != nullptr)
+	{
+		Controller->Possess(PawnOwner);
+	}
 }
 
 void ATGMProjectile::Boost()
@@ -191,12 +184,7 @@ void ATGMProjectile::Boost()
 
 void ATGMProjectile::Destroyed()
 {
-	ProjectileCamera->SetActive(false);
 
-	if (Controller != nullptr)
-	{
-		Controller->Possess(PawnOwner);
-	}
 
 	Super::Destroyed();
 }

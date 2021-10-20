@@ -14,13 +14,6 @@ class TGM_API ATGMProjectile : public APawn
 	GENERATED_BODY()
 	
 		
-	/** Follow camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	class UCameraComponent* ProjectileCamera;
-
-	UPROPERTY()
-	class APawn* PawnOwner;
-
 public:	
 	// Sets default values for this actor's properties
 	ATGMProjectile();
@@ -44,13 +37,23 @@ public:
 	virtual void AddControllerYawInput(float Val) override;
 
 protected:
+	
+	/** Follow camera */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class UCameraComponent* ProjectileCamera;
+
+	UPROPERTY()
+	class APawn* PawnOwner;
+
+	UPROPERTY(EditDefaultsOnly)
+	class UParticleSystem* ExplosionFX;
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, Category = Camera)
 	float BaseTurnRate;
 
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	UPROPERTY(EditDefaultsOnly, Category = Camera)
 	float BaseLookUpRate;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
@@ -103,12 +106,14 @@ public:
 	UProjectileMovementComponent* ProjectileMovementComponent;
 
 	// Projectile mesh
-	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
+	UPROPERTY()
 	UStaticMeshComponent* ProjectileMeshComponent;
 
-	// Projectile material
-	UPROPERTY(VisibleDefaultsOnly, Category = Movement)
-	UMaterialInstanceDynamic* ProjectileMaterialInstance;
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	UStaticMesh* ProjectileMesh;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	UMaterial* ProjectileMaterial;
 
 	// Function that initializes the projectile's velocity in the shoot direction.
 	void FireInDirection(const FVector& ShootDirection, class APawn* pawnOwner);
