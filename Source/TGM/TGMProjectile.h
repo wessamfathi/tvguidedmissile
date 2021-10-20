@@ -53,6 +53,16 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 	float BaseLookUpRate;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	float TurnRateMultiplier;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	float LookUpRateMultiplier;
+
+	float BoostMultiplier;
+
+	float BoostAccelerationFactor;
+
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
@@ -77,6 +87,8 @@ protected:
 	// End of APawn interface
 
 	void Explode();
+
+	void Boost();
 
 public:	
 	// Called every frame

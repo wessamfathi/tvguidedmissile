@@ -84,6 +84,13 @@ ATGMProjectile::ATGMProjectile()
 
 	BaseTurnRate = 1.0f;
 	BaseLookUpRate = 1.0f;
+
+	TurnRateMultiplier = 0.03f;
+	LookUpRateMultiplier = 0.03f;
+
+	BoostMultiplier = 0.333f;
+
+	BoostAccelerationFactor = 2.0f;
 }
 
 // Called when the game starts or when spawned
@@ -116,6 +123,8 @@ void ATGMProjectile::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ATGMProjectile::LookUpAtRate);
 
 	PlayerInputComponent->BindAction("Explode", IE_Pressed, this, &ATGMProjectile::Explode);
+
+	PlayerInputComponent->BindAction("Boost", IE_Pressed, this, &ATGMProjectile::Boost);
 }
 
 void ATGMProjectile::TurnAtRate(float Rate)
@@ -127,6 +136,10 @@ void ATGMProjectile::TurnAtRate(float Rate)
 
 void ATGMProjectile::AddControllerYawInput(float Val)
 {
+	Val = Val * TurnRateMultiplier;
+
+	UE_LOG(LogTemp, Warning, TEXT("%f"), Val);
+
 	ProjectileMovementComponent->Velocity = ProjectileMovementComponent->Velocity.RotateAngleAxis(Val, FVector(0.0f, 0.0f, 1.0f));
 	Super::AddControllerYawInput(Val);
 }
@@ -140,7 +153,8 @@ void ATGMProjectile::LookUpAtRate(float Rate)
 
 void ATGMProjectile::AddControllerPitchInput(float Val)
 {
-	ProjectileMovementComponent->Velocity = ProjectileMovementComponent->Velocity.RotateAngleAxis(Val, FVector(1.0f, 0.0f, 0.0f));
+	Val = Val * LookUpRateMultiplier;
+	ProjectileMovementComponent->Velocity = ProjectileMovementComponent->Velocity.RotateAngleAxis(Val, FVector(0.0f, 1.0f, 0.0f));
 	Super::AddControllerPitchInput(Val);
 }
 
@@ -164,6 +178,15 @@ void ATGMProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor
 void ATGMProjectile::Explode()
 {
 	Destroy();
+}
+
+void ATGMProjectile::Boost()
+{
+	LookUpRateMultiplier *= BoostMultiplier;
+	TurnRateMultiplier *= BoostMultiplier;
+
+	ProjectileMovementComponent->Velocity *= BoostAccelerationFactor;
+	ProjectileMovementComponent->MaxSpeed *= BoostAccelerationFactor;
 }
 
 void ATGMProjectile::Destroyed()
