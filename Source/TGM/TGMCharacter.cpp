@@ -161,6 +161,8 @@ void ATGMCharacter::FireProjectile()
 		// Transform MuzzleOffset from camera space to world space.
 		FVector MuzzleLocation = CameraLocation + FTransform(CameraRotation).TransformVector(MuzzleOffset);
 
+		FRotator MuzzleRotation = CameraRotation;
+
 		UWorld* World = GetWorld();
 		if (World)
 		{
@@ -169,7 +171,7 @@ void ATGMCharacter::FireProjectile()
 			SpawnParams.Instigator = GetInstigator();
 
 			// Spawn the projectile at the muzzle.
-			ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, CameraRotation, SpawnParams);
+			ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
 			if (ActiveProjectile)
 			{
 				ActiveProjectile->OnDestroyed.AddDynamic(this, &ATGMCharacter::OnProjectileDestroyed);
