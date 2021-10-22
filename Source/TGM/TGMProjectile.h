@@ -67,9 +67,15 @@ protected:
 
 	float ProjectileLifeSpan;
 
+	float ImpulseRadius;
+
+	float ImpulseMagnitude;
+
 	// Called when the projectile hits something
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
+
+	void ApplyRadialImpulse();
 
 	/**
 	 * Called via input to turn at a given rate.

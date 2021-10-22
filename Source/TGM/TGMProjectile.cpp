@@ -78,6 +78,9 @@ ATGMProjectile::ATGMProjectile()
 	BoostMultiplier = 0.333f;
 
 	BoostAccelerationFactor = 2.0f;
+
+	ImpulseRadius = 300.0f;
+	ImpulseMagnitude = 500000.0f;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -150,11 +153,6 @@ void ATGMProjectile::FireInDirection(const FVector& ShootDirection, APawn* pawnO
 
 void ATGMProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (OtherActor != this && OtherComponent->IsSimulatingPhysics())
-	{
-		OtherComponent->AddImpulseAtLocation(ProjectileMovementComponent->Velocity * 100.0f, Hit.ImpactPoint);
-	}
-
 	Explode();
 }
 
@@ -162,6 +160,8 @@ void ATGMProjectile::Explode()
 {
 	UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionFX, GetActorLocation(), GetActorRotation(), true);
 	PSC->ActivateSystem();
+
+	ApplyRadialImpulse();
 
 	ProjectileCamera->SetActive(false);
 
@@ -171,6 +171,30 @@ void ATGMProjectile::Explode()
 	}
 
 	Destroy();
+}
+
+void ATGMProjectile::ApplyRadialImpulse()
+{
+	TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldDynamic));
+	ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_PhysicsBody));
+
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+
+	FVector ActorLocation = GetActorLocation();
+	TArray<UPrimitiveComponent*> OutComponents;
+	UKismetSystemLibrary::SphereOverlapComponents(this, ActorLocation, ImpulseRadius, ObjectTypes, nullptr, ActorsToIgnore, OutComponents);
+
+	FVector Impulse;
+	UPrimitiveComponent* Component;
+	for (int32 i = 0; i < OutComponents.Num(); i++)
+	{
+		Component = OutComponents[i];
+		Impulse = (Component->GetComponentLocation() - ActorLocation).GetSafeNormal() * ImpulseMagnitude;
+		OutComponents[i]->AddImpulse(Impulse);
+	}
+
 }
 
 void ATGMProjectile::Boost()
