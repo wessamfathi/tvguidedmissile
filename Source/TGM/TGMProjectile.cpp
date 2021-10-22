@@ -34,7 +34,7 @@ ATGMProjectile::ATGMProjectile()
 		ProjectileMovementComponent->SetUpdatedComponent(CollisionComponent);
 		ProjectileMovementComponent->InitialSpeed = 3000.0f;
 		ProjectileMovementComponent->MaxSpeed = 3000.0f;
-		ProjectileMovementComponent->bRotationFollowsVelocity = true;
+		ProjectileMovementComponent->bRotationFollowsVelocity = false;
 		ProjectileMovementComponent->bShouldBounce = true;
 		ProjectileMovementComponent->Bounciness = 0.3f;
 		ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
@@ -62,7 +62,7 @@ ATGMProjectile::ATGMProjectile()
 	ProjectileCamera->PostProcessSettings.GrainJitter = 1.0f;
 	ProjectileCamera->SetActive(false);
 
-	InitialLifeSpan = 5.0f;
+	ProjectileLifeSpan = 5.0f;
 
 	// Set the projectile's collision profile
 	CollisionComponent->BodyInstance.SetCollisionProfileName(TEXT("Projectile"));
@@ -78,19 +78,6 @@ ATGMProjectile::ATGMProjectile()
 	BoostMultiplier = 0.333f;
 
 	BoostAccelerationFactor = 2.0f;
-}
-
-// Called when the game starts or when spawned
-void ATGMProjectile::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-// Called every frame
-void ATGMProjectile::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -120,12 +107,24 @@ void ATGMProjectile::TurnAtRate(float Rate)
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
+void ATGMProjectile::BeginPlay()
+{
+	Super::BeginPlay();
+
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &ATGMProjectile::Explode, ProjectileLifeSpan, false);
+}
+
+void ATGMProjectile::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	ProjectileMovementComponent->Velocity = Controller->GetControlRotation().Vector() * ProjectileMovementComponent->MaxSpeed;
+}
+
 
 void ATGMProjectile::AddControllerYawInput(float Val)
 {
 	Val = Val * TurnRateMultiplier;
-
-	ProjectileMovementComponent->Velocity = ProjectileMovementComponent->Velocity.RotateAngleAxis(Val, FVector(0.0f, 0.0f, 1.0f));
 	Super::AddControllerYawInput(Val);
 }
 
@@ -139,7 +138,6 @@ void ATGMProjectile::LookUpAtRate(float Rate)
 void ATGMProjectile::AddControllerPitchInput(float Val)
 {
 	Val = Val * LookUpRateMultiplier;
-	ProjectileMovementComponent->Velocity = ProjectileMovementComponent->Velocity.RotateAngleAxis(Val, FVector(0.0f, 1.0f, 0.0f));
 	Super::AddControllerPitchInput(Val);
 }
 
@@ -171,6 +169,8 @@ void ATGMProjectile::Explode()
 	{
 		Controller->Possess(PawnOwner);
 	}
+
+	Destroy();
 }
 
 void ATGMProjectile::Boost()
@@ -180,11 +180,4 @@ void ATGMProjectile::Boost()
 
 	ProjectileMovementComponent->Velocity *= BoostAccelerationFactor;
 	ProjectileMovementComponent->MaxSpeed *= BoostAccelerationFactor;
-}
-
-void ATGMProjectile::Destroyed()
-{
-
-
-	Super::Destroyed();
 }

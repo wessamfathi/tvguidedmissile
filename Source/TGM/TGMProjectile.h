@@ -14,11 +14,10 @@ class TGM_API ATGMProjectile : public APawn
 	GENERATED_BODY()
 	
 		
-public:	
+public:
+
 	// Sets default values for this actor's properties
 	ATGMProjectile();
-
-	virtual void Destroyed() override;
 
 	/**
 	 * Add input (affecting Pitch) to the Controller's ControlRotation, if it is a local PlayerController.
@@ -66,8 +65,7 @@ protected:
 
 	float BoostAccelerationFactor;
 
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	float ProjectileLifeSpan;
 
 	// Called when the projectile hits something
 	UFUNCTION()
@@ -92,11 +90,13 @@ protected:
 	void Explode();
 
 	void Boost();
-
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
 	
+public:	
+
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void BeginPlay() override;
+
 	// Sphere collision component
 	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
 	USphereComponent* CollisionComponent;
