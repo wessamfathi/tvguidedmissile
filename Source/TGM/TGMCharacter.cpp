@@ -147,39 +147,43 @@ void ATGMCharacter::MoveRight(float Value)
 
 void ATGMCharacter::FireProjectile()
 {
-	// Attempt to fire a projectile.
-	if (ProjectileClass)
+	// Can only shoot one projectile at a time
+	if (CanFire())
 	{
-		// Get the camera transform.
-		FVector CameraLocation;
-		FRotator CameraRotation;
-		GetActorEyesViewPoint(CameraLocation, CameraRotation);
-
-		// Set MuzzleOffset to spawn projectiles slightly in front of the camera.
-		MuzzleOffset.Set(100.0f, 0.0f, 0.0f);
-
-		// Transform MuzzleOffset from camera space to world space.
-		FVector MuzzleLocation = CameraLocation + FTransform(CameraRotation).TransformVector(MuzzleOffset);
-
-		FRotator MuzzleRotation = CameraRotation;
-
-		UWorld* World = GetWorld();
-		if (World)
+		// Attempt to fire a projectile.
+		if (ProjectileClass)
 		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = this;
-			SpawnParams.Instigator = GetInstigator();
+			// Get the camera transform.
+			FVector CameraLocation;
+			FRotator CameraRotation;
+			GetActorEyesViewPoint(CameraLocation, CameraRotation);
 
-			// Spawn the projectile at the muzzle.
-			ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-			if (ActiveProjectile)
+			// Set MuzzleOffset to spawn projectiles slightly in front of the camera.
+			MuzzleOffset.Set(100.0f, 0.0f, 0.0f);
+
+			// Transform MuzzleOffset from camera space to world space.
+			FVector MuzzleLocation = CameraLocation + FTransform(CameraRotation).TransformVector(MuzzleOffset);
+
+			FRotator MuzzleRotation = CameraRotation;
+
+			UWorld* World = GetWorld();
+			if (World)
 			{
-				ActiveProjectile->OnDestroyed.AddDynamic(this, &ATGMCharacter::OnProjectileDestroyed);
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = this;
+				SpawnParams.Instigator = GetInstigator();
 
-				// Set the projectile's initial trajectory.
-				FVector LaunchDirection = MuzzleRotation.Vector();
-				ActiveProjectile->FireInDirection(LaunchDirection, this);
-				Controller->Possess(ActiveProjectile);
+				// Spawn the projectile at the muzzle.
+				ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
+				if (ActiveProjectile)
+				{
+					ActiveProjectile->OnDestroyed.AddDynamic(this, &ATGMCharacter::OnProjectileDestroyed);
+
+					// Set the projectile's initial trajectory.
+					FVector LaunchDirection = MuzzleRotation.Vector();
+					ActiveProjectile->FireInDirection(LaunchDirection, this);
+					Controller->Possess(ActiveProjectile);
+				}
 			}
 		}
 	}
@@ -187,4 +191,5 @@ void ATGMCharacter::FireProjectile()
 
 void ATGMCharacter::OnProjectileDestroyed(AActor* DestroyedActor)
 {
+	ActiveProjectile = nullptr;
 }
