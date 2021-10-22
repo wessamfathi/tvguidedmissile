@@ -81,6 +81,8 @@ ATGMProjectile::ATGMProjectile()
 
 	ImpulseRadius = 300.0f;
 	ImpulseMagnitude = 500000.0f;
+
+	bIsBoosted = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -199,9 +201,13 @@ void ATGMProjectile::ApplyRadialImpulse()
 
 void ATGMProjectile::Boost()
 {
-	LookUpRateMultiplier *= BoostMultiplier;
-	TurnRateMultiplier *= BoostMultiplier;
+	if (!bIsBoosted)
+	{
+		bIsBoosted = true;
+		LookUpRateMultiplier *= BoostMultiplier;
+		TurnRateMultiplier *= BoostMultiplier;
 
-	ProjectileMovementComponent->Velocity *= BoostAccelerationFactor;
-	ProjectileMovementComponent->MaxSpeed *= BoostAccelerationFactor;
+		ProjectileMovementComponent->Velocity *= BoostAccelerationFactor;
+		ProjectileMovementComponent->MaxSpeed *= BoostAccelerationFactor;
+	}
 }
