@@ -20,8 +20,8 @@ Run the project in the target UE4 version and play directly in the editor to tes
 
 ## Notes
 
-- Projectile control is more limited than player camera control. This is by design.
-- When the projectile is boosted, velocity increases but control decreases.
+- Projectile handling is more limited than player handling. This is by design.
+- When the projectile is boosted, velocity increases but handling decreases.
 - Projectile has a life span of 5 seconds by default, after which it explodes automatically.
 
 ## Extras
@@ -31,3 +31,5 @@ If I had time, the following are what I'd like to add to the project:
 - Camera shake on explosion
 - HUD
 - Scoring
+- Projectile pooling
+- Multiplayer support
