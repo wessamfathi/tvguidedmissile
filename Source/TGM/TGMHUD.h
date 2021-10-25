@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,7 +6,7 @@
 #include "TGMHUD.generated.h"
 
 /**
- * 
+ * Custom HUD class to render crosshairs
  */
 UCLASS()
 class TGM_API ATGMHUD : public AHUD

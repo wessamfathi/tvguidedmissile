@@ -1,6 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
-
 #include "TGMProjectile.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -9,37 +6,29 @@
 // Sets default values
 ATGMProjectile::ATGMProjectile()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	// Set this actor to call Tick() every frame
 	PrimaryActorTick.bCanEverTick = true;
 
-	if (RootComponent == nullptr)
-	{
-		RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ProjectileSceneComponent"));
-	}
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("ProjectileSceneComponent"));
 
-	if (CollisionComponent == nullptr)
-	{
-		// Use a sphere as a simple collision representation.
-		CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
-		// Set the sphere's collision radius.
-		CollisionComponent->InitSphereRadius(15.0f);
-		// Set the root component to be the collision component.
-		RootComponent = CollisionComponent;
-	}
+	// Use a sphere as a simple collision representation.
+	CollisionComponent = CreateDefaultSubobject<USphereComponent>(TEXT("SphereComponent"));
+	// Set the sphere's collision radius.
+	CollisionComponent->InitSphereRadius(15.0f);
+	// Set the root component to be the collision component.
+	RootComponent = CollisionComponent;
 
-	if (ProjectileMovementComponent == nullptr)
-	{
-		// Use this component to drive this projectile's movement.
-		ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
-		ProjectileMovementComponent->SetUpdatedComponent(CollisionComponent);
-		ProjectileMovementComponent->InitialSpeed = 3000.0f;
-		ProjectileMovementComponent->MaxSpeed = 3000.0f;
-		ProjectileMovementComponent->bRotationFollowsVelocity = false;
-		ProjectileMovementComponent->bShouldBounce = true;
-		ProjectileMovementComponent->Bounciness = 0.3f;
-		ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
-	}
+	// Use this component to drive this projectile's movement.
+	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
+	ProjectileMovementComponent->SetUpdatedComponent(CollisionComponent);
+	ProjectileMovementComponent->InitialSpeed = 3000.0f;
+	ProjectileMovementComponent->MaxSpeed = 3000.0f;
+	ProjectileMovementComponent->bRotationFollowsVelocity = false;
+	ProjectileMovementComponent->bShouldBounce = true;
+	ProjectileMovementComponent->Bounciness = 0.3f;
+	ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
 
+	// Create the static mesh component for this projectile
 	ProjectileMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ProjectileMeshComponent"));
 
 	if (ProjectileMeshComponent != nullptr)
@@ -48,10 +37,10 @@ ATGMProjectile::ATGMProjectile()
 		ProjectileMeshComponent->SetMaterial(0, ProjectileMaterial);
 	}
 
-	// Create a follow camera
+	// Create a follow camera with special VFX
 	ProjectileCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	ProjectileCamera->SetupAttachment(RootComponent); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
-	ProjectileCamera->bUsePawnControlRotation = true; // Camera does not rotate relative to arm
+	ProjectileCamera->SetupAttachment(RootComponent); // Attach the camera to character's root component
+	ProjectileCamera->bUsePawnControlRotation = true; // Camera follows pawn controller rotation
 	ProjectileCamera->PostProcessSettings.ColorSaturation = FVector4(0, 0, 0, 0);
 	ProjectileCamera->PostProcessSettings.bOverride_ColorSaturation = true;
 	ProjectileCamera->PostProcessSettings.GrainIntensity = 0.6f;
@@ -60,29 +49,30 @@ ATGMProjectile::ATGMProjectile()
 	ProjectileCamera->PostProcessSettings.bOverride_VignetteIntensity = true;
 	ProjectileCamera->PostProcessSettings.VignetteIntensity = 0.8f;
 	ProjectileCamera->PostProcessSettings.GrainJitter = 1.0f;
-	ProjectileCamera->SetActive(false);
 
+	// Projectile should self-destruct after set time
 	ProjectileLifeSpan = 5.0f;
 
 	// Set the projectile's collision profile
 	CollisionComponent->BodyInstance.SetCollisionProfileName(TEXT("Projectile"));
 
+	// Callback when the projectile hits something
 	CollisionComponent->OnComponentHit.AddDynamic(this, &ATGMProjectile::OnHit);
 
+	// Set initial input related values
 	BaseTurnRate = 1.0f;
 	BaseLookUpRate = 1.0f;
-
 	TurnRateMultiplier = 0.03f;
 	LookUpRateMultiplier = 0.03f;
 
-	BoostMultiplier = 0.333f;
+	// Input modifiers used when player boosts the projectile
+	BoostHandlingMultiplier = 0.333f;
+	BoostSpeedMultiplier = 2.0f;
+	bIsBoosted = false;
 
-	BoostAccelerationFactor = 2.0f;
-
+	// Explosion related values
 	ImpulseRadius = 300.0f;
 	ImpulseMagnitude = 500000.0f;
-
-	bIsBoosted = false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -101,8 +91,8 @@ void ATGMProjectile::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ATGMProjectile::LookUpAtRate);
 
+	// Custom projectile input controls
 	PlayerInputComponent->BindAction("Explode", IE_Pressed, this, &ATGMProjectile::Explode);
-
 	PlayerInputComponent->BindAction("Boost", IE_Pressed, this, &ATGMProjectile::Boost);
 }
 
@@ -116,6 +106,7 @@ void ATGMProjectile::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// Set a timer to explode the projectile after its lifespan is over
 	FTimerHandle TimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &ATGMProjectile::Explode, ProjectileLifeSpan, false);
 }
@@ -123,12 +114,15 @@ void ATGMProjectile::BeginPlay()
 void ATGMProjectile::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	// Set the movement component velocity manually every frame so that it follows the rotation
 	ProjectileMovementComponent->Velocity = Controller->GetControlRotation().Vector() * ProjectileMovementComponent->MaxSpeed;
 }
 
 
 void ATGMProjectile::AddControllerYawInput(float Val)
 {
+	// Use a custom TurnRateMultiplier to limit handling
 	Val = Val * TurnRateMultiplier;
 	Super::AddControllerYawInput(Val);
 }
@@ -142,6 +136,7 @@ void ATGMProjectile::LookUpAtRate(float Rate)
 
 void ATGMProjectile::AddControllerPitchInput(float Val)
 {
+	// Use a custom LookUpRateMultiplier to limit handling
 	Val = Val * LookUpRateMultiplier;
 	Super::AddControllerPitchInput(Val);
 }
@@ -160,18 +155,20 @@ void ATGMProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor
 
 void ATGMProjectile::Explode()
 {
+	// Spawn and activate explosion VFX
 	UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionFX, GetActorLocation(), GetActorRotation(), true);
 	PSC->ActivateSystem();
 
+	// Simulate projectile shockwave
 	ApplyRadialImpulse();
 
-	ProjectileCamera->SetActive(false);
-
+	// Let the controller possess the original character
 	if (Controller != nullptr)
 	{
 		Controller->Possess(PawnOwner);
 	}
 
+	// Finally projectile should be destroyed
 	Destroy();
 }
 
@@ -184,6 +181,7 @@ void ATGMProjectile::ApplyRadialImpulse()
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(this);
 
+	// Get all components within ImpulseRadius from explosion center
 	FVector ActorLocation = GetActorLocation();
 	TArray<UPrimitiveComponent*> OutComponents;
 	UKismetSystemLibrary::SphereOverlapComponents(this, ActorLocation, ImpulseRadius, ObjectTypes, nullptr, ActorsToIgnore, OutComponents);
@@ -193,21 +191,26 @@ void ATGMProjectile::ApplyRadialImpulse()
 	for (int32 i = 0; i < OutComponents.Num(); i++)
 	{
 		Component = OutComponents[i];
+
+		// Add impulse from explosion center to component location
 		Impulse = (Component->GetComponentLocation() - ActorLocation).GetSafeNormal() * ImpulseMagnitude;
 		OutComponents[i]->AddImpulse(Impulse);
 	}
-
 }
 
 void ATGMProjectile::Boost()
 {
+	// Projectile can only be boosted once
 	if (!bIsBoosted)
 	{
 		bIsBoosted = true;
-		LookUpRateMultiplier *= BoostMultiplier;
-		TurnRateMultiplier *= BoostMultiplier;
 
-		ProjectileMovementComponent->Velocity *= BoostAccelerationFactor;
-		ProjectileMovementComponent->MaxSpeed *= BoostAccelerationFactor;
+		// Limit handling even more
+		LookUpRateMultiplier *= BoostHandlingMultiplier;
+		TurnRateMultiplier *= BoostHandlingMultiplier;
+
+		// Increase projectile velocity and max speed by boost factor
+		ProjectileMovementComponent->Velocity *= BoostSpeedMultiplier;
+		ProjectileMovementComponent->MaxSpeed *= BoostSpeedMultiplier;
 	}
 }

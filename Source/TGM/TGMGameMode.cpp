@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "TGMGameMode.h"
 #include "TGMCharacter.h"
 #include "UObject/ConstructorHelpers.h"

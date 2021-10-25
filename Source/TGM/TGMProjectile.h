@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -8,12 +6,14 @@
 #include "Components/SphereComponent.h"
 #include "TGMProjectile.generated.h"
 
+/**
+ * Custom projectile class that can be steered by player
+ */
 UCLASS()
 class TGM_API ATGMProjectile : public APawn
 {
 	GENERATED_BODY()
 	
-		
 public:
 
 	// Sets default values for this actor's properties
@@ -35,9 +35,33 @@ public:
 	 */
 	virtual void AddControllerYawInput(float Val) override;
 
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void BeginPlay() override;
+
+	// Sphere collision component
+	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
+		USphereComponent* CollisionComponent;
+
+	// Projectile movement component.
+	UPROPERTY(VisibleAnywhere, Category = Movement)
+	UProjectileMovementComponent* ProjectileMovementComponent;
+
+	UPROPERTY()
+	UStaticMeshComponent* ProjectileMeshComponent;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	UStaticMesh* ProjectileMesh;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	UMaterial* ProjectileMaterial;
+
+	// Function that initializes the projectile's velocity in the shoot direction.
+	void FireInDirection(const FVector& ShootDirection, class APawn* pawnOwner);
+
 protected:
 	
-	/** Follow camera */
+	// Follow camera
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* ProjectileCamera;
 
@@ -47,36 +71,50 @@ protected:
 	UPROPERTY(EditDefaultsOnly)
 	class UParticleSystem* ExplosionFX;
 
-	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
-	UPROPERTY(EditDefaultsOnly, Category = Camera)
+	// Base turn rate, in deg/sec. Other scaling may affect final turn rate.
+	UPROPERTY(EditDefaultsOnly, Category = Handling)
 	float BaseTurnRate;
 
-	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(EditDefaultsOnly, Category = Camera)
+	// Base look up/down rate, in deg/sec. Other scaling may affect final rate.
+	UPROPERTY(EditDefaultsOnly, Category = Handling)
 	float BaseLookUpRate;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	// Turn rate multiplier to limit handling
+	UPROPERTY(EditDefaultsOnly, Category = Handling)
 	float TurnRateMultiplier;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+	// Lookup rate multiplier to limit handling
+	UPROPERTY(EditDefaultsOnly, Category = Handling)
 	float LookUpRateMultiplier;
 
-	float BoostMultiplier;
+	// Handling multiplier used when projectile is boosted
+	UPROPERTY(EditDefaultsOnly, Category = Handling)
+	float BoostHandlingMultiplier;
 
-	float BoostAccelerationFactor;
+	// Speed multiplier used when projectile is boosted
+	UPROPERTY(EditDefaultsOnly, Category = Movement)
+	float BoostSpeedMultiplier;
 
+	// Time after which projectile self-destructs
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 	float ProjectileLifeSpan;
 
+	// Radius within explosion impulse is used
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 	float ImpulseRadius;
 
+	// Explosion impulse value
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 	float ImpulseMagnitude;
 
+	// Whether projectile has already been boosted
 	bool bIsBoosted;
 
 	// Called when the projectile hits something
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit);
 
+	// Simulate explosion shockwave
 	void ApplyRadialImpulse();
 
 	/**
@@ -95,34 +133,9 @@ protected:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// End of APawn interface
 
+	// Explode the projectile and play all relevant FX
 	void Explode();
 
+	// Boost projectile speed on player input
 	void Boost();
-	
-public:	
-
-	virtual void Tick(float DeltaTime) override;
-
-	virtual void BeginPlay() override;
-
-	// Sphere collision component
-	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
-	USphereComponent* CollisionComponent;
-
-	// Projectile movement component.
-	UPROPERTY(VisibleAnywhere, Category = Movement)
-	UProjectileMovementComponent* ProjectileMovementComponent;
-
-	// Projectile mesh
-	UPROPERTY()
-	UStaticMeshComponent* ProjectileMeshComponent;
-
-	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-	UStaticMesh* ProjectileMesh;
-
-	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-	UMaterial* ProjectileMaterial;
-
-	// Function that initializes the projectile's velocity in the shoot direction.
-	void FireInDirection(const FVector& ShootDirection, class APawn* pawnOwner);
 };
