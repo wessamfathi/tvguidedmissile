@@ -1,20 +1,35 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
 #include "TGMHUD.h"
+#include "Engine/Canvas.h"
+#include "Engine/Texture2D.h"
+#include "TextureResource.h"
+#include "CanvasItem.h"
+#include "UObject/ConstructorHelpers.h"
+
+ATGMHUD::ATGMHUD()
+{
+	// Set the crosshair texture
+	static ConstructorHelpers::FObjectFinder<UTexture2D> CrosshairTexObj(TEXT("/Game/FirstPerson/Textures/FirstPersonCrosshair"));
+	CrosshairTex = CrosshairTexObj.Object;
+}
+
 
 void ATGMHUD::DrawHUD()
 {
 	Super::DrawHUD();
 
-	if (CrosshairTexture != nullptr)
-	{
-        // Find the center of our canvas.
-        FVector2D Center(Canvas->ClipX * 0.5f, Canvas->ClipY * 0.5f);
+	// Draw very simple crosshair
 
-        // Offset by half of the texture's dimensions so that the center of the texture aligns with the center of the Canvas.
-        FVector2D CrossHairDrawPosition(Center.X - (CrosshairTexture->GetSurfaceWidth() * 0.5f), Center.Y - (CrosshairTexture->GetSurfaceHeight() * 0.5f));
+	// find center of the Canvas
+	const FVector2D Center(Canvas->ClipX * 0.5f, Canvas->ClipY * 0.5f);
 
-        // Draw the crosshair at the centerpoint.
-        FCanvasTileItem TileItem(CrossHairDrawPosition, CrosshairTexture->Resource, FLinearColor::White);
-        TileItem.BlendMode = SE_BLEND_Translucent;
-        Canvas->DrawItem(TileItem);
-	}
+	// offset by half the texture's dimensions so that the center of the texture aligns with the center of the Canvas
+	const FVector2D CrosshairDrawPosition( (Center.X),
+										   (Center.Y + 20.0f));
+
+	// draw the crosshair
+	FCanvasTileItem TileItem( CrosshairDrawPosition, CrosshairTex->Resource, FLinearColor::White);
+	TileItem.BlendMode = SE_BLEND_Translucent;
+	Canvas->DrawItem( TileItem );
 }

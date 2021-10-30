@@ -1,22 +1,25 @@
-#pragma once
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once 
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
-#include "Engine/Canvas.h"
 #include "TGMHUD.generated.h"
 
-/**
- * Custom HUD class to render crosshairs
- */
 UCLASS()
-class TGM_API ATGMHUD : public AHUD
+class ATGMHUD : public AHUD
 {
 	GENERATED_BODY()
-	
-protected:
-	UPROPERTY(EditDefaultsOnly)
-	UTexture2D* CrosshairTexture;
 
 public:
+	ATGMHUD();
+
+	/** Primary draw call for the HUD */
 	virtual void DrawHUD() override;
+
+private:
+	/** Crosshair asset pointer */
+	class UTexture2D* CrosshairTex;
+
 };
+

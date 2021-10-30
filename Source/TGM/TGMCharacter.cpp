@@ -1,42 +1,108 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
 #include "TGMCharacter.h"
-#include "HeadMountedDisplayFunctionLibrary.h"
+#include "TGMProjectile.h"
+#include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/Controller.h"
+#include "GameFramework/InputSettings.h"
+#include "HeadMountedDisplayFunctionLibrary.h"
+#include "Kismet/GameplayStatics.h"
+#include "MotionControllerComponent.h"
+#include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
+
+DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
 //////////////////////////////////////////////////////////////////////////
 // ATGMCharacter
 
 ATGMCharacter::ATGMCharacter()
 {
-	ActiveProjectile = nullptr;
-
 	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
 	// set our turn rates for input
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
-	// Rotate character with controller rotation
-	bUseControllerRotationPitch = true;
-	bUseControllerRotationYaw = true;
-	bUseControllerRotationRoll = true;
+	// Create a CameraComponent	
+	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
+	FirstPersonCameraComponent->SetRelativeLocation(FVector(-39.56f, 1.75f, 64.f)); // Position the camera
+	FirstPersonCameraComponent->bUsePawnControlRotation = true;
 
-	// Configure character movement
-	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
-	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f); // ...at this rotation rate
-	GetCharacterMovement()->JumpZVelocity = 600.f;
-	GetCharacterMovement()->AirControl = 0.2f;
+	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
+	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
+	Mesh1P->SetOnlyOwnerSee(true);
+	Mesh1P->SetupAttachment(FirstPersonCameraComponent);
+	Mesh1P->bCastDynamicShadow = false;
+	Mesh1P->CastShadow = false;
+	Mesh1P->SetRelativeRotation(FRotator(1.9f, -19.19f, 5.2f));
+	Mesh1P->SetRelativeLocation(FVector(-0.5f, -4.4f, -155.7f));
 
-	// Create a follow camera
-	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
-	FollowCamera->SetupAttachment(RootComponent); // Attach the camera to character's root component
-	FollowCamera->bUsePawnControlRotation = true; // Camera follows pawn controller rotation
+	// Create a gun mesh component
+	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
+	FP_Gun->SetOnlyOwnerSee(false);			// otherwise won't be visible in the multiplayer
+	FP_Gun->bCastDynamicShadow = false;
+	FP_Gun->CastShadow = false;
+	// FP_Gun->SetupAttachment(Mesh1P, TEXT("GripPoint"));
+	FP_Gun->SetupAttachment(RootComponent);
 
-	ProjectileClass = ATGMProjectile::StaticClass();
+	FP_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
+	FP_MuzzleLocation->SetupAttachment(FP_Gun);
+	FP_MuzzleLocation->SetRelativeLocation(FVector(0.2f, 48.4f, -10.6f));
+
+	// Default offset from the character location for projectiles to spawn
+	GunOffset = FVector(100.0f, 0.0f, 10.0f);
+
+	// Note: The ProjectileClass and the skeletal mesh/anim blueprints for Mesh1P, FP_Gun, and VR_Gun 
+	// are set in the derived blueprint asset named MyCharacter to avoid direct content references in C++.
+
+	// Create VR Controllers.
+	R_MotionController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("R_MotionController"));
+	R_MotionController->MotionSource = FXRMotionControllerBase::RightHandSourceId;
+	R_MotionController->SetupAttachment(RootComponent);
+	L_MotionController = CreateDefaultSubobject<UMotionControllerComponent>(TEXT("L_MotionController"));
+	L_MotionController->SetupAttachment(RootComponent);
+
+	// Create a gun and attach it to the right-hand VR controller.
+	// Create a gun mesh component
+	VR_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("VR_Gun"));
+	VR_Gun->SetOnlyOwnerSee(false);			// otherwise won't be visible in the multiplayer
+	VR_Gun->bCastDynamicShadow = false;
+	VR_Gun->CastShadow = false;
+	VR_Gun->SetupAttachment(R_MotionController);
+	VR_Gun->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+
+	VR_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("VR_MuzzleLocation"));
+	VR_MuzzleLocation->SetupAttachment(VR_Gun);
+	VR_MuzzleLocation->SetRelativeLocation(FVector(0.000004, 53.999992, 10.000000));
+	VR_MuzzleLocation->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));		// Counteract the rotation of the VR gun model.
+
+	// Uncomment the following line to turn motion controllers on by default:
+	//bUsingMotionControllers = true;
+}
+
+void ATGMCharacter::BeginPlay()
+{
+	// Call the base class  
+	Super::BeginPlay();
+
+	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
+	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+
+	// Show or hide the two versions of the gun based on whether or not we're using motion controllers.
+	if (bUsingMotionControllers)
+	{
+		VR_Gun->SetHiddenInGame(false, true);
+		Mesh1P->SetHiddenInGame(true, true);
+	}
+	else
+	{
+		VR_Gun->SetHiddenInGame(true, true);
+		Mesh1P->SetHiddenInGame(false, true);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -44,11 +110,22 @@ ATGMCharacter::ATGMCharacter()
 
 void ATGMCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
-	// Set up gameplay key bindings
+	// set up gameplay key bindings
 	check(PlayerInputComponent);
+
+	// Bind jump events
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
+	// Bind fire event
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ATGMCharacter::OnFire);
+
+	// Enable touchscreen input
+	EnableTouchscreenMovement(PlayerInputComponent);
+
+	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ATGMCharacter::OnResetVR);
+
+	// Bind movement events
 	PlayerInputComponent->BindAxis("MoveForward", this, &ATGMCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ATGMCharacter::MoveRight);
 
@@ -59,98 +136,165 @@ void ATGMCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 	PlayerInputComponent->BindAxis("TurnRate", this, &ATGMCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ATGMCharacter::LookUpAtRate);
-
-	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &ATGMCharacter::FireProjectile);
 }
 
-void ATGMCharacter::TurnAtRate(float Rate)
+void ATGMCharacter::OnFire()
 {
-	// Calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+	// try and fire a projectile
+	if (ProjectileClass != nullptr)
+	{
+		UWorld* const World = GetWorld();
+		if (World != nullptr)
+		{
+			if (bUsingMotionControllers)
+			{
+				const FRotator SpawnRotation = VR_MuzzleLocation->GetComponentRotation();
+				const FVector SpawnLocation = VR_MuzzleLocation->GetComponentLocation();
+				World->SpawnActor<ATGMProjectile>(ProjectileClass, SpawnLocation, SpawnRotation);
+			}
+			else
+			{
+				const FRotator SpawnRotation = GetControlRotation();
+				// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
+				const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+
+				//Set Spawn Collision Handling Override
+				FActorSpawnParameters ActorSpawnParams;
+				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+
+				// spawn the projectile at the muzzle
+				World->SpawnActor<ATGMProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			}
+		}
+	}
+
+	// try and play the sound if specified
+	if (FireSound != nullptr)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+	}
+
+	// try and play a firing animation if specified
+	if (FireAnimation != nullptr)
+	{
+		// Get the animation object for the arms mesh
+		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+		if (AnimInstance != nullptr)
+		{
+			AnimInstance->Montage_Play(FireAnimation, 1.f);
+		}
+	}
 }
 
-void ATGMCharacter::LookUpAtRate(float Rate)
+void ATGMCharacter::OnResetVR()
 {
-	// Calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
 }
+
+void ATGMCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
+{
+	if (TouchItem.bIsPressed == true)
+	{
+		return;
+	}
+	if ((FingerIndex == TouchItem.FingerIndex) && (TouchItem.bMoved == false))
+	{
+		OnFire();
+	}
+	TouchItem.bIsPressed = true;
+	TouchItem.FingerIndex = FingerIndex;
+	TouchItem.Location = Location;
+	TouchItem.bMoved = false;
+}
+
+void ATGMCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
+{
+	if (TouchItem.bIsPressed == false)
+	{
+		return;
+	}
+	TouchItem.bIsPressed = false;
+}
+
+//Commenting this section out to be consistent with FPS BP template.
+//This allows the user to turn without using the right virtual joystick
+
+//void ATGMCharacter::TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location)
+//{
+//	if ((TouchItem.bIsPressed == true) && (TouchItem.FingerIndex == FingerIndex))
+//	{
+//		if (TouchItem.bIsPressed)
+//		{
+//			if (GetWorld() != nullptr)
+//			{
+//				UGameViewportClient* ViewportClient = GetWorld()->GetGameViewport();
+//				if (ViewportClient != nullptr)
+//				{
+//					FVector MoveDelta = Location - TouchItem.Location;
+//					FVector2D ScreenSize;
+//					ViewportClient->GetViewportSize(ScreenSize);
+//					FVector2D ScaledDelta = FVector2D(MoveDelta.X, MoveDelta.Y) / ScreenSize;
+//					if (FMath::Abs(ScaledDelta.X) >= 4.0 / ScreenSize.X)
+//					{
+//						TouchItem.bMoved = true;
+//						float Value = ScaledDelta.X * BaseTurnRate;
+//						AddControllerYawInput(Value);
+//					}
+//					if (FMath::Abs(ScaledDelta.Y) >= 4.0 / ScreenSize.Y)
+//					{
+//						TouchItem.bMoved = true;
+//						float Value = ScaledDelta.Y * BaseTurnRate;
+//						AddControllerPitchInput(Value);
+//					}
+//					TouchItem.Location = Location;
+//				}
+//				TouchItem.Location = Location;
+//			}
+//		}
+//	}
+//}
 
 void ATGMCharacter::MoveForward(float Value)
 {
-	if ((Controller != nullptr) && (Value != 0.0f))
+	if (Value != 0.0f)
 	{
-		// Find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
-
-		// Get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Value);
+		// add movement in that direction
+		AddMovementInput(GetActorForwardVector(), Value);
 	}
 }
 
 void ATGMCharacter::MoveRight(float Value)
 {
-	if ( (Controller != nullptr) && (Value != 0.0f) )
+	if (Value != 0.0f)
 	{
-		// Find out which way is right
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		// add movement in that direction
+		AddMovementInput(GetActorRightVector(), Value);
+	}
+}
+
+void ATGMCharacter::TurnAtRate(float Rate)
+{
+	// calculate delta for this frame from the rate information
+	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
+}
+
+void ATGMCharacter::LookUpAtRate(float Rate)
+{
+	// calculate delta for this frame from the rate information
+	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+}
+
+bool ATGMCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInputComponent)
+{
+	if (FPlatformMisc::SupportsTouchInput() || GetDefault<UInputSettings>()->bUseMouseForTouch)
+	{
+		PlayerInputComponent->BindTouch(EInputEvent::IE_Pressed, this, &ATGMCharacter::BeginTouch);
+		PlayerInputComponent->BindTouch(EInputEvent::IE_Released, this, &ATGMCharacter::EndTouch);
+
+		//Commenting this out to be more consistent with FPS BP template.
+		//PlayerInputComponent->BindTouch(EInputEvent::IE_Repeat, this, &ATGMCharacter::TouchUpdate);
+		return true;
+	}
 	
-		// Get right vector 
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		// Add movement in that direction
-		AddMovementInput(Direction, Value);
-	}
-}
-
-void ATGMCharacter::FireProjectile()
-{
-	// Can only shoot one projectile at a time
-	if (CanFire())
-	{
-		// Attempt to fire a projectile.
-		checkf(ProjectileClass, TEXT("ProjectileClass must be set"));
-		
-			// Get the camera transform.
-			FVector CameraLocation;
-			FRotator CameraRotation;
-			GetActorEyesViewPoint(CameraLocation, CameraRotation);
-
-			// Set MuzzleOffset to spawn projectiles slightly in front of the camera.
-			MuzzleOffset.Set(100.0f, 0.0f, 0.0f);
-
-			// Transform MuzzleOffset from camera space to world space.
-			FVector MuzzleLocation = CameraLocation + FTransform(CameraRotation).TransformVector(MuzzleOffset);
-			FRotator MuzzleRotation = CameraRotation;
-
-			UWorld* World = GetWorld();
-			if (World != nullptr)
-			{
-				FActorSpawnParameters SpawnParams;
-				SpawnParams.Owner = this;
-				SpawnParams.Instigator = GetInstigator();
-
-				// Spawn the projectile at the muzzle.
-				ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, SpawnParams);
-				if (ActiveProjectile)
-				{
-					ActiveProjectile->OnDestroyed.AddDynamic(this, &ATGMCharacter::OnProjectileDestroyed);
-
-					// Set the projectile's initial trajectory.
-					FVector LaunchDirection = MuzzleRotation.Vector();
-					ActiveProjectile->FireInDirection(LaunchDirection, this);
-
-					// Let the controller assume control of the projectile now
-					Controller->Possess(ActiveProjectile);
-				}
-			}
-		
-	}
-}
-
-void ATGMCharacter::OnProjectileDestroyed(AActor* DestroyedActor)
-{
-	// Reset ActiveProjectile so our character can shoot a new one
-	ActiveProjectile = nullptr;
+	return false;
 }
