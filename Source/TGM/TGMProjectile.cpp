@@ -3,6 +3,9 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "GameFramework/ProjectileMovementComponent.h"
+#include "Components/SphereComponent.h"
+#include "Components/AudioComponent.h"
 
 // Sets default values
 ATGMProjectile::ATGMProjectile()
