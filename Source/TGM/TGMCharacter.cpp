@@ -163,7 +163,17 @@ void ATGMCharacter::OnFire()
 				ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 
 				// spawn the projectile at the muzzle
-				World->SpawnActor<ATGMProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+				ATGMProjectile* ActiveProjectile = World->SpawnActor<ATGMProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+
+				if (ActiveProjectile)
+				{
+					// Set the projectile's initial trajectory.
+					FVector LaunchDirection = SpawnRotation.Vector();
+					ActiveProjectile->FireInDirection(LaunchDirection, this);
+
+					// Let the controller assume control of the projectile now
+					Controller->Possess(ActiveProjectile);
+				}
 			}
 		}
 	}
