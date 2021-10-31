@@ -2,9 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "GameFramework/ProjectileMovementComponent.h"
-#include "Components/SphereComponent.h"
-#include "Components/AudioComponent.h"
 #include "TGMProjectile.generated.h"
 
 /**
@@ -42,24 +39,24 @@ public:
 
 	// Sphere collision component
 	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
-	USphereComponent* CollisionComponent;
+	class USphereComponent* CollisionComponent;
 
 	// Projectile movement component.
 	UPROPERTY(VisibleAnywhere, Category = Movement)
-	UProjectileMovementComponent* ProjectileMovementComponent;
+	class UProjectileMovementComponent* ProjectileMovementComponent;
 
 	// Explosion audio component
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-	UAudioComponent* ExplosionAudioComponent;
+	class UAudioComponent* ExplosionAudioComponent;
 
 	UPROPERTY()
-	UStaticMeshComponent* ProjectileMeshComponent;
+	class UStaticMeshComponent* ProjectileMeshComponent;
 
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-	UStaticMesh* ProjectileMesh;
+	class UStaticMesh* ProjectileMesh;
 
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-	UMaterial* ProjectileMaterial;
+	class UMaterial* ProjectileMaterial;
 
 	// Function that initializes the projectile's velocity in the shoot direction.
 	void FireInDirection(const FVector& ShootDirection, class APawn* pawnOwner);
