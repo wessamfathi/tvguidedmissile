@@ -27,9 +27,7 @@ Run the project in the target UE4 version and play directly in the editor to tes
 ## Extras
 
 If I had time, the following are what I'd like to add to the project:
-- Sound effects
-- Camera shake on explosion
-- HUD
+- Camera shake
 - Scoring
 - Projectile pooling
 - Multiplayer support
