@@ -118,6 +118,8 @@ void ATGMCharacter::OnFire()
 				FVector LaunchDirection = SpawnRotation.Vector();
 				ActiveProjectile->FireInDirection(LaunchDirection, this);
 
+				OldRotation = SpawnRotation;
+
 				// Let the controller assume control of the projectile now
 				Controller->Possess(ActiveProjectile);
 			}

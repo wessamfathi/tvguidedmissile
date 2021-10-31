@@ -59,7 +59,7 @@ public:
 	class UMaterial* ProjectileMaterial;
 
 	// Function that initializes the projectile's velocity in the shoot direction.
-	void FireInDirection(const FVector& ShootDirection, class APawn* pawnOwner);
+	void FireInDirection(const FVector& ShootDirection, class ATGMCharacter* pawnOwner);
 
 protected:
 	
@@ -68,7 +68,7 @@ protected:
 	class UCameraComponent* ProjectileCamera;
 
 	UPROPERTY()
-	class APawn* PawnOwner;
+	class ATGMCharacter* PawnOwner;
 
 	UPROPERTY(EditDefaultsOnly)
 	class UParticleSystem* ExplosionFX;

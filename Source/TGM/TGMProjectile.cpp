@@ -6,6 +6,7 @@
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 #include "Components/AudioComponent.h"
+#include "TGMCharacter.h"
 
 // Sets default values
 ATGMProjectile::ATGMProjectile()
@@ -166,7 +167,7 @@ void ATGMProjectile::AddControllerPitchInput(float Val)
 	Super::AddControllerPitchInput(Val);
 }
 
-void ATGMProjectile::FireInDirection(const FVector& ShootDirection, APawn* pawnOwner)
+void ATGMProjectile::FireInDirection(const FVector& ShootDirection, ATGMCharacter* pawnOwner)
 {
 	CameraLerpTimeLeft = MaxCameraLerpTime;
 	ProjectileMovementComponent->Velocity = ShootDirection * ProjectileMovementComponent->InitialSpeed;
@@ -193,6 +194,7 @@ void ATGMProjectile::Explode()
 	// Let the controller possess the original character
 	if (Controller != nullptr)
 	{
+		PawnOwner->SetActorRotation(PawnOwner->GetOldRotation());
 		Controller->Possess(PawnOwner);
 	}
 
