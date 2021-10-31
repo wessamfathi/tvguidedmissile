@@ -173,6 +173,7 @@ void ATGMProjectile::FireInDirection(const FVector& ShootDirection, ATGMCharacte
 	ProjectileMovementComponent->Velocity = ShootDirection * ProjectileMovementComponent->InitialSpeed;
 	ProjectileCamera->SetActive(true);
 	PawnOwner = pawnOwner;
+	CollisionComponent->IgnoreActorWhenMoving(PawnOwner, true);
 }
 
 void ATGMProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
