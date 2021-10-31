@@ -1,4 +1,5 @@
 #include "TGMProjectile.h"
+#include "Sound/SoundCue.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
@@ -6,6 +7,21 @@
 // Sets default values
 ATGMProjectile::ATGMProjectile()
 {
+	// Set initial input related values
+	BaseTurnRate = 1.0f;
+	BaseLookUpRate = 1.0f;
+	TurnRateMultiplier = 0.06f;
+	LookUpRateMultiplier = 0.06f;
+
+	// Input modifiers used when player boosts the projectile
+	BoostHandlingMultiplier = 0.333f;
+	BoostSpeedMultiplier = 2.0f;
+	bIsBoosted = false;
+
+	// Explosion related values
+	ImpulseRadius = 300.0f;
+	ImpulseMagnitude = 500000.0f;
+
  	// Set this actor to call Tick() every frame
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -21,11 +37,10 @@ ATGMProjectile::ATGMProjectile()
 	// Use this component to drive this projectile's movement.
 	ProjectileMovementComponent = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->SetUpdatedComponent(CollisionComponent);
-	ProjectileMovementComponent->InitialSpeed = 3000.0f;
-	ProjectileMovementComponent->MaxSpeed = 3000.0f;
+	ProjectileMovementComponent->InitialSpeed = 1500.0f;
+	ProjectileMovementComponent->MaxSpeed = 1500.0f;
 	ProjectileMovementComponent->bRotationFollowsVelocity = false;
-	ProjectileMovementComponent->bShouldBounce = true;
-	ProjectileMovementComponent->Bounciness = 0.3f;
+	ProjectileMovementComponent->bShouldBounce = false;
 	ProjectileMovementComponent->ProjectileGravityScale = 0.0f;
 
 	// Create the static mesh component for this projectile
@@ -50,29 +65,20 @@ ATGMProjectile::ATGMProjectile()
 	ProjectileCamera->PostProcessSettings.VignetteIntensity = 0.8f;
 	ProjectileCamera->PostProcessSettings.GrainJitter = 1.0f;
 
+	// Create the explosion audio component
+	ExplosionAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("ExplosionAudioComponent"));
+	ExplosionAudioComponent->SetupAttachment(RootComponent);
+	ExplosionAudioComponent->bAutoActivate = false;
+	ExplosionAudioComponent->bStopWhenOwnerDestroyed = false;
+
 	// Projectile should self-destruct after set time
-	ProjectileLifeSpan = 5.0f;
+	ProjectileLifeSpan = 7.0f;
 
 	// Set the projectile's collision profile
 	CollisionComponent->BodyInstance.SetCollisionProfileName(TEXT("Projectile"));
 
 	// Callback when the projectile hits something
 	CollisionComponent->OnComponentHit.AddDynamic(this, &ATGMProjectile::OnHit);
-
-	// Set initial input related values
-	BaseTurnRate = 1.0f;
-	BaseLookUpRate = 1.0f;
-	TurnRateMultiplier = 0.03f;
-	LookUpRateMultiplier = 0.03f;
-
-	// Input modifiers used when player boosts the projectile
-	BoostHandlingMultiplier = 0.333f;
-	BoostSpeedMultiplier = 2.0f;
-	bIsBoosted = false;
-
-	// Explosion related values
-	ImpulseRadius = 300.0f;
-	ImpulseMagnitude = 500000.0f;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -158,6 +164,8 @@ void ATGMProjectile::Explode()
 	// Spawn and activate explosion VFX
 	UParticleSystemComponent* PSC = UGameplayStatics::SpawnEmitterAtLocation(this, ExplosionFX, GetActorLocation(), GetActorRotation(), true);
 	PSC->ActivateSystem();
+
+	ExplosionAudioComponent->Play();
 
 	// Simulate projectile shockwave
 	ApplyRadialImpulse();

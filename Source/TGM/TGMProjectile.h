@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
+#include "Components/AudioComponent.h"
 #include "TGMProjectile.generated.h"
 
 /**
@@ -41,11 +42,15 @@ public:
 
 	// Sphere collision component
 	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
-		USphereComponent* CollisionComponent;
+	USphereComponent* CollisionComponent;
 
 	// Projectile movement component.
 	UPROPERTY(VisibleAnywhere, Category = Movement)
 	UProjectileMovementComponent* ProjectileMovementComponent;
+
+	// Explosion audio component
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	UAudioComponent* ExplosionAudioComponent;
 
 	UPROPERTY()
 	UStaticMeshComponent* ProjectileMeshComponent;
