@@ -21,5 +21,10 @@ private:
 	/** Crosshair asset pointer */
 	class UTexture2D* CrosshairTex;
 
+	UPROPERTY(EditDefaultsOnly, Category = HUD)
+	float DeltaX;
+
+	UPROPERTY(EditDefaultsOnly, Category = HUD)
+	float DeltaY;
 };
 
