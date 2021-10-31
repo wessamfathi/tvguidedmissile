@@ -109,6 +109,23 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
 	float ImpulseMagnitude;
 
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float MaxCameraLerpTime;
+
+	float CameraLerpTimeLeft;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float TargetColorSaturation;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float TargetGrainIntensity;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float TargetGrainJitter;
+
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+	float TargetVignetteIntensity;
+
 	// Whether projectile has already been boosted
 	bool bIsBoosted;
 

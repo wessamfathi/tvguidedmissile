@@ -59,14 +59,18 @@ ATGMProjectile::ATGMProjectile()
 	ProjectileCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	ProjectileCamera->SetupAttachment(RootComponent); // Attach the camera to character's root component
 	ProjectileCamera->bUsePawnControlRotation = true; // Camera follows pawn controller rotation
-	ProjectileCamera->PostProcessSettings.ColorSaturation = FVector4(0, 0, 0, 0);
 	ProjectileCamera->PostProcessSettings.bOverride_ColorSaturation = true;
-	ProjectileCamera->PostProcessSettings.GrainIntensity = 0.6f;
+	ProjectileCamera->PostProcessSettings.ColorSaturation = FVector4(1.0f, 1.0f, 1.0f, 1.0f);
 	ProjectileCamera->PostProcessSettings.bOverride_GrainIntensity = true;
 	ProjectileCamera->PostProcessSettings.bOverride_GrainJitter = true;
 	ProjectileCamera->PostProcessSettings.bOverride_VignetteIntensity = true;
-	ProjectileCamera->PostProcessSettings.VignetteIntensity = 0.8f;
-	ProjectileCamera->PostProcessSettings.GrainJitter = 1.0f;
+
+	TargetColorSaturation = 0;
+	TargetGrainIntensity = 0.6f;
+	TargetVignetteIntensity = 0.8f;
+	TargetGrainJitter = 1.0f;
+
+	MaxCameraLerpTime = 0.1f;
 
 	// Create the explosion audio component
 	ExplosionAudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("ExplosionAudioComponent"));
@@ -126,8 +130,21 @@ void ATGMProjectile::Tick(float DeltaTime)
 
 	// Set the movement component velocity manually every frame so that it follows the rotation
 	ProjectileMovementComponent->Velocity = Controller->GetControlRotation().Vector() * ProjectileMovementComponent->MaxSpeed;
-}
 
+	// Interpolate camera post-process settings until finished
+	if (CameraLerpTimeLeft > 0.0f)
+	{
+		CameraLerpTimeLeft -= DeltaTime;
+
+		float alpha = 1.0f - (CameraLerpTimeLeft / MaxCameraLerpTime);
+		float colorSaturation = FMath::Lerp(1.0f, TargetColorSaturation, alpha);
+
+		ProjectileCamera->PostProcessSettings.ColorSaturation = FVector4::FVector4(colorSaturation, colorSaturation, colorSaturation, colorSaturation);
+		ProjectileCamera->PostProcessSettings.GrainIntensity = FMath::Lerp(0.0f, TargetGrainIntensity, alpha);
+		ProjectileCamera->PostProcessSettings.GrainJitter = FMath::Lerp(0.0f, TargetGrainJitter, alpha);
+		ProjectileCamera->PostProcessSettings.VignetteIntensity = FMath::Lerp(0.0f, TargetVignetteIntensity, alpha);
+	}
+}
 
 void ATGMProjectile::AddControllerYawInput(float Val)
 {
@@ -135,7 +152,6 @@ void ATGMProjectile::AddControllerYawInput(float Val)
 	Val = Val * TurnRateMultiplier;
 	Super::AddControllerYawInput(Val);
 }
-
 
 void ATGMProjectile::LookUpAtRate(float Rate)
 {
@@ -152,6 +168,7 @@ void ATGMProjectile::AddControllerPitchInput(float Val)
 
 void ATGMProjectile::FireInDirection(const FVector& ShootDirection, APawn* pawnOwner)
 {
+	CameraLerpTimeLeft = MaxCameraLerpTime;
 	ProjectileMovementComponent->Velocity = ShootDirection * ProjectileMovementComponent->InitialSpeed;
 	ProjectileCamera->SetActive(true);
 	PawnOwner = pawnOwner;
